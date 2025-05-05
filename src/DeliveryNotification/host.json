@@ -1,0 +1,19 @@
+{
+    "version": "2.0",
+    "logging": {
+        "applicationInsights": {
+            "samplingSettings": {
+                "isEnabled": false,
+                "excludedTypes": "Request"
+            },
+            "enableLiveMetricsFilters": true
+        },
+        "fileLoggingMode": "debugOnly",
+        "logLevel": {
+            "default": "Information",
+            "Function": "Information",
+            "Host": "Error",
+            "Host.Aggregator": "Information"
+        }
+    }
+}
