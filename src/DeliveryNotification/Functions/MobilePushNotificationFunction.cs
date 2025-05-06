@@ -2,32 +2,43 @@
 
 public class MobilePushNotificationFunction(
     [FromKeyedServices(NotificationChannelType.MobilePush)] INotificationChannelService notificationChannelService,
-    ILogger<MobilePushNotificationFunction> logger
+    FunctionContext executionContext
 )
 {
-    //[Function(nameof(MobilePushNotificationFunction))]
+    private readonly ILogger _logger = executionContext.GetLogger<MobilePushNotificationFunction>();
+
+    [Function(nameof(MobilePushNotificationFunction))]
     public async Task Run(
         [ServiceBusTrigger(
-            "notification-topic",
-            "mobile-push-subscription",
+            NotificationConstants.TopicName,
+            NotificationConstants.MobilePushSub,
             Connection = "ServiceBusConnection"
         )]
             ServiceBusReceivedMessage message,
         CancellationToken cancellationToken
     )
     {
-        logger.LogInformation("Mobile Push Notification Function triggered");
+        using var scope = _logger.BeginScope("Mobile Push Processing MessageId: {MessageId}", message.MessageId);
+        _logger.LogInformation("Message body: {Body}", message.Body.ToString());
 
         var payloadJson = message.Body.ToString();
         var payload = JsonSerializer.Deserialize<NotificationPayload>(payloadJson);
 
-        if (payload != null)
+        if (payload is null)
+        {
+            _logger.LogError("Invalid notification payload in mobile push handler.");
+            return;
+        }
+
+        try
         {
             await notificationChannelService.HandleAsync(payload, cancellationToken);
+            _logger.LogInformation("Successfully processed mobile push for: {Name}", payload.User?.Name);
         }
-        else
+        catch (Exception ex)
         {
-            logger.LogError("Failed to deserialize NotificationPayload");
+            _logger.LogError(ex, "Failed to mobile push handle notification for messageid: {MessageId}", message.MessageId);
+            throw;
         }
     }
 }

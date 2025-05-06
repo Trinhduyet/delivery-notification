@@ -2,50 +2,36 @@
 
 public class EmailNotificationFunction(
     [FromKeyedServices(NotificationChannelType.Email)] INotificationChannelService notificationChannelService,
-    ILogger<EmailNotificationFunction> logger
+    FunctionContext executionContext
 )
 {
+    private readonly ILogger _logger = executionContext.GetLogger<EmailNotificationFunction>();
+
     [Function(nameof(EmailNotificationFunction))]
     public async Task RunAsync(
-        [ServiceBusTrigger("notification-topic", "email", Connection = "ServiceBusConnection")]
+        [ServiceBusTrigger(NotificationConstants.TopicName, NotificationConstants.EmailSub, Connection = "ServiceBusConnection")]
             ServiceBusReceivedMessage message,
-        CancellationToken cancellationToken
-    )
+        CancellationToken cancellationToken)
     {
-        logger.LogInformation(
-            "EmailNotificationFunction triggered. MessageId: {MessageId}, Subject: {Subject}",
-            message.MessageId,
-            message.Subject
-        );
-        logger.LogError("Message body: {Body}", message.Body.ToString());
+        using var scope = _logger.BeginScope("Processing MessageId: {MessageId}", message.MessageId);
+        _logger.LogInformation("Message body: {Body}", message.Body.ToString());
+
+        var payload = JsonSerializer.Deserialize<NotificationPayload>(message.Body);
+
+        if (payload is null)
+        {
+            _logger.LogError("Notification payload is null. Raw body: {Body}", message.Body.ToString());
+            return;
+        }
 
         try
         {
-            var payload = JsonSerializer.Deserialize<NotificationPayload>(message.Body);
-
-            if (payload == null)
-            {
-                logger.LogError(
-                    "Invalid notification payload in email handler. Body: {Body}",
-                    message.Body.ToString()
-                );
-                return;
-            }
-
-            logger.LogInformation(
-                "Successfully deserialized payload for user: {Email}",
-                payload.User?.Email
-            );
             await notificationChannelService.HandleAsync(payload, cancellationToken);
+            _logger.LogInformation("Successfully processed email for: {Email}", payload.User?.Email);
         }
         catch (Exception ex)
         {
-            logger.LogError(
-                ex,
-                "Error processing message. MessageId: {MessageId}, Body: {Body}",
-                message.MessageId,
-                message.Body.ToString()
-            );
+            _logger.LogError(ex, "Failed to email handle notification for messageid: {MessageId}", message.MessageId);
             throw;
         }
     }

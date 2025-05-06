@@ -4,7 +4,7 @@ public class SmsNotificationService(
     ILogger<SmsNotificationService> logger,
     INotificationTemplateService templateService,
     IActivityLogService activityLogService,
-    IHttpClientFactory httpClientFactory
+    HttpClient httpClient
 )
     : BaseNotificationChannelService(templateService, activityLogService, logger),
         INotificationChannelService
@@ -14,59 +14,65 @@ public class SmsNotificationService(
         CancellationToken cancellationToken = default
     )
     {
-        var template = await _templateService.GetTemplateContentAsync(
-            payload.NotificationId,
-            "sms",
+
+        var toPhoneNumber = payload.User.PhoneNumber;
+        if (string.IsNullOrWhiteSpace(toPhoneNumber))
+        {
+            logger.LogError("Phone number is null or empty");
+            return;
+        }
+
+        var (_, body) = await _templateService.GetTemplateContentAsync(
+            payload.CompanyCode,
+           nameof(NotificationChannelType.MobilePush),
             cancellationToken
         );
 
-        if (template == null)
+        if (string.IsNullOrWhiteSpace(body))
         {
-            logger.LogError(
-                "Template not found for NotificationTemplateId {NotificationTemplateId}",
-                payload.NotificationId
-            );
+            logger.LogError("Template not found for company: {CompanyCode}", payload.CompanyCode);
             return;
         }
-        var content = _templateService.MergeContent(template, payload.MergeTags);
 
-        var accountSid = Environment.GetEnvironmentVariable("Twilio__AccountSid");
-        var authToken = Environment.GetEnvironmentVariable("Twilio__AuthToken");
-        var fromPhoneNumber = Environment.GetEnvironmentVariable("Twilio__FromPhoneNumber");
+        var content = _templateService.MergeContent(body, payload.MergeTags);
 
-        var toPhoneNumber = payload.User.PhoneNumber;
+        var accountSid = Environment.GetEnvironmentVariable("Twilio_AccountSid");
+        var authToken = Environment.GetEnvironmentVariable("Twilio_AuthToken");
+        var fromPhoneNumber = Environment.GetEnvironmentVariable("Twilio_FromPhoneNumber") ?? "Euroland";
+        var sendUrl = Environment.GetEnvironmentVariable("Twilio_SendUrl");
+
+
         var request = new HttpRequestMessage(
             HttpMethod.Post,
-            $"https://api.twilio.com/2010-04-01/Accounts/{accountSid}/Messages.json"
+            sendUrl?.Replace(
+                "{AccountSid}",
+                accountSid
+            )
         );
 
-        var body = new FormUrlEncodedContent(
+        var bodySms = new FormUrlEncodedContent(
             [
-                new KeyValuePair<string, string>("To", toPhoneNumber ?? "0000000000"),
-                new KeyValuePair<string, string>("From", fromPhoneNumber ?? "Euroland"),
+                new KeyValuePair<string, string>("To", toPhoneNumber),
+                new KeyValuePair<string, string>("From", fromPhoneNumber),
                 new KeyValuePair<string, string>("Body", content),
             ]
         );
-        request.Content = body;
+        request.Content = bodySms;
 
         var byteArray = Encoding.ASCII.GetBytes($"{accountSid}:{authToken}");
         request.Headers.Authorization = new AuthenticationHeaderValue(
             "Basic",
             Convert.ToBase64String(byteArray)
         );
-        var client = httpClientFactory.CreateClient();
-        var response = await client.SendAsync(request);
+        var response = await httpClient.SendAsync(request, cancellationToken);
 
-        if (response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
         {
-            logger.LogInformation("SMS sent successfully to {PhoneNumber}", toPhoneNumber);
-        }
-        else
-        {
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             logger.LogError(
-                "Failed to send SMS. Status: {StatusCode}, Reason: {Reason}",
-                response.StatusCode,
-                await response.Content.ReadAsStringAsync(cancellationToken)
+                "Failed to send SMS to {PhoneNumber}, Reason: {Reason}",
+                toPhoneNumber,
+                responseBody
             );
         }
 
@@ -76,8 +82,8 @@ public class SmsNotificationService(
                 PartitionKey = payload.User.Name,
                 RowKey = Guid.NewGuid().ToString(),
                 Channel = NotificationChannelType.Sms.ToString(),
-                NotificationId = payload.NotificationId,
-                Status = "Success",
+                CompanyCode = payload.CompanyCode,
+                Status = response.IsSuccessStatusCode ? "Success" : "Failed",
                 Timestamp = DateTime.UtcNow,
             },
             cancellationToken

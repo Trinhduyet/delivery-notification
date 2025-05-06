@@ -13,29 +13,34 @@ public class WebhookNotificationService(
 {
     public async Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Starting Webhook notification for user: {User}", payload.User.Email);
-
-        var template = await _templateService.GetTemplateContentAsync(
-            payload.NotificationId,
-            "webhook",
+        var (subject, body) = await _templateService.GetTemplateContentAsync(
+            payload.CompanyCode,
+           nameof(NotificationChannelType.Webhook),
             cancellationToken
         );
 
-        var content = _templateService.MergeContent(template, payload.MergeTags);
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            logger.LogError("Template not found for company: {CompanyCode}", payload.CompanyCode);
+            return;
+        }
+
+        var content = _templateService.MergeContent(body, payload.MergeTags);
 
         if (string.IsNullOrEmpty(payload.User.WebhookUrl))
         {
-            throw new InvalidOperationException("Webhook URL is missing for user.");
+            logger.LogError("WebhookUrl is null or empty");
+            return;
         }
 
         var webhookPayload = new
         {
-            email = payload.User.Email,
+            user = payload.User.Name,
+            subject,
             content,
             timestamp = DateTime.UtcNow,
         };
 
-        // Replace the ambiguous line with the following:
         var response = await httpClient.PostAsJsonAsync(
             payload.User.WebhookUrl,
             webhookPayload,
@@ -43,14 +48,24 @@ public class WebhookNotificationService(
         );
         response.EnsureSuccessStatusCode();
 
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            logger.LogError(
+                "Failed to send to webhook {Url}, Reason: {Reason}",
+                payload.User.WebhookUrl,
+                responseBody
+            );
+        }
+
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
                 PartitionKey = payload.User.Name,
                 RowKey = Guid.NewGuid().ToString(),
                 Channel = NotificationChannelType.Webhook.ToString(),
-                NotificationId = payload.NotificationId,
-                Status = "Success",
+                CompanyCode = payload.CompanyCode,
+                Status = response.IsSuccessStatusCode ? "Success" : "Failed",
                 Timestamp = DateTime.UtcNow,
             },
             cancellationToken

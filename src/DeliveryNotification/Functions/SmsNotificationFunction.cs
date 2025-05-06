@@ -2,24 +2,39 @@
 
 public class SmsNotificationFunction(
     [FromKeyedServices(NotificationChannelType.Sms)] INotificationChannelService notificationChannelService,
-    ILogger<SmsNotificationFunction> logger
+    FunctionContext executionContext
 )
 {
-    //[Function(nameof(SmsNotificationFunction))]
+    private readonly ILogger _logger = executionContext.GetLogger<SmsNotificationFunction>();
+
+    [Function(nameof(SmsNotificationFunction))]
     public async Task RunAsync(
-        [ServiceBusTrigger("notification-topic", "sms", Connection = "ServiceBusConnection")]
+        [ServiceBusTrigger(NotificationConstants.TopicName, NotificationConstants.SmsSub, Connection = "ServiceBusConnection")]
             ServiceBusReceivedMessage message,
         CancellationToken cancellationToken
     )
     {
-        var payload = JsonSerializer.Deserialize<NotificationPayload>(message.Body);
+        using var scope = _logger.BeginScope("Sms Processing MessageId: {MessageId}", message.MessageId);
+        _logger.LogInformation("Message body: {Body}", message.Body.ToString());
 
-        if (payload == null)
+        var payloadJson = message.Body.ToString();
+        var payload = JsonSerializer.Deserialize<NotificationPayload>(payloadJson);
+
+        if (payload is null)
         {
-            logger.LogError("Invalid notification payload in sms handler.");
+            _logger.LogError("Invalid notification payload in sms handler.");
             return;
         }
 
-        await notificationChannelService.HandleAsync(payload, cancellationToken);
+        try
+        {
+            await notificationChannelService.HandleAsync(payload, cancellationToken);
+            _logger.LogInformation("Successfully processed sms for: {Name}", payload.User?.PhoneNumber);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to sms handle notification for messageid: {MessageId}", message.MessageId);
+            throw;
+        }
     }
 }

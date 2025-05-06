@@ -1,4 +1,6 @@
-﻿namespace DeliveryNotification.Extensions;
+﻿using DeliveryNotification.Infrastructure;
+
+namespace DeliveryNotification.Extensions;
 
 public static class ServiceCollectionExtensions
 {
@@ -12,7 +14,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ITableClientsProvider, TableClientsProvider>();
 
-        var sendGridApiKey = Environment.GetEnvironmentVariable("SENDGRID_API_KEY");
+        var sendGridApiKey = Environment.GetEnvironmentVariable("SendGrid_API_Key");
         services.AddSingleton<ISendGridClient>(sp => new SendGridClient(sendGridApiKey));
 
         services.AddSingleton(provider =>
@@ -20,6 +22,12 @@ public static class ServiceCollectionExtensions
             var connectionString = Environment.GetEnvironmentVariable("ServiceBusConnection");
             return new ServiceBusClient(connectionString);
         });
+
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionString");
+
+        services.AddDbContext<NotificationDbContext>(options =>
+            options.UseSqlServer(connectionString)
+        );
 
         return services;
     }

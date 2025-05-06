@@ -13,24 +13,24 @@ public class MobilePushNotificationService(
 {
     public async Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken)
     {
-        var template = await _templateService.GetTemplateContentAsync(
-            payload.NotificationId,
-            "mobilepush",
+        var (subject, body) = await _templateService.GetTemplateContentAsync(
+            payload.CompanyCode,
+           nameof(NotificationChannelType.MobilePush),
             cancellationToken
         );
 
-        if (template == null)
+        if (string.IsNullOrWhiteSpace(body))
         {
-            logger.LogError("Template not found for Id: {NotificationId}", payload.NotificationId);
+            logger.LogError("Template not found for company: {CompanyCode}", payload.CompanyCode);
             return;
         }
 
-        var content = _templateService.MergeContent(template, payload.MergeTags);
+        var content = _templateService.MergeContent(body, payload.MergeTags);
 
         var pushNotificationPayload = new
         {
             deviceToken = payload.User.DeviceToken,
-            title = content,
+            title = subject,
             body = content,
         };
 
@@ -43,7 +43,7 @@ public class MobilePushNotificationService(
 
         if (response.IsSuccessStatusCode)
         {
-            logger.LogInformation("Successfully sent Mobile Push to {User}", payload.User.Email);
+            logger.LogInformation("Successfully sent Mobile Push to {User}", payload.User.Name);
         }
         else
         {
@@ -59,8 +59,8 @@ public class MobilePushNotificationService(
                 PartitionKey = payload.User.Name,
                 RowKey = Guid.NewGuid().ToString(),
                 Channel = NotificationChannelType.MobilePush.ToString(),
-                NotificationId = payload.NotificationId,
-                Status = "Success",
+                CompanyCode = payload.CompanyCode,
+                Status = response.IsSuccessStatusCode ? "Success" : "Failed",
                 Timestamp = DateTime.UtcNow,
             },
             cancellationToken

@@ -2,24 +2,39 @@
 
 public class WebhookNotificationFunction(
     [FromKeyedServices(NotificationChannelType.Webhook)] INotificationChannelService notificationChannelService,
-    ILogger<WebhookNotificationFunction> logger
+    FunctionContext executionContext
 )
 {
-    //[Function(nameof(WebhookNotificationFunction))]
+    private readonly ILogger _logger = executionContext.GetLogger<WebhookNotificationFunction>();
+
+    [Function(nameof(WebhookNotificationFunction))]
     public async Task RunAsync(
-        [ServiceBusTrigger("notification-topic", "webhook", Connection = "ServiceBusConnection")]
+        [ServiceBusTrigger(NotificationConstants.TopicName, NotificationConstants.SmsSub, Connection = "ServiceBusConnection")]
             ServiceBusReceivedMessage message,
         CancellationToken cancellationToken
     )
     {
-        var payload = JsonSerializer.Deserialize<NotificationPayload>(message.Body);
+        using var scope = _logger.BeginScope("Mobile Push Processing MessageId: {MessageId}", message.MessageId);
+        _logger.LogInformation("Message body: {Body}", message.Body.ToString());
 
-        if (payload == null)
+        var payloadJson = message.Body.ToString();
+        var payload = JsonSerializer.Deserialize<NotificationPayload>(payloadJson);
+
+        if (payload is null)
         {
-            logger.LogError("Invalid notification payload in webhook handler.");
+            _logger.LogError("Invalid notification payload in webhook handler.");
             return;
         }
 
-        await notificationChannelService.HandleAsync(payload, cancellationToken);
+        try
+        {
+            await notificationChannelService.HandleAsync(payload, cancellationToken);
+            _logger.LogInformation("Successfully processed webhook for: {Name}", payload.User?.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to webhook handle notification for messageid: {MessageId}", message.MessageId);
+            throw;
+        }
     }
 }

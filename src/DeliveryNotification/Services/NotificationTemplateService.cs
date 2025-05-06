@@ -1,22 +1,33 @@
-﻿namespace DeliveryNotification.Services;
+﻿using DeliveryNotification.Infrastructure;
 
-public class NotificationTemplateService(ITableClientsProvider provider) : INotificationTemplateService
+namespace DeliveryNotification.Services;
+
+public class NotificationTemplateService(NotificationDbContext dbContext) : INotificationTemplateService
 {
-    private readonly TableClient _tableClient = provider.NotificationTemplates;
-
-    public async Task<string> GetTemplateContentAsync(
-        string notificationId,
+    public async Task<(string? Subject, string? Body)> GetTemplateContentAsync(
+        string companyCode,
         string channel,
         CancellationToken cancellationToken
     )
     {
-        var response = await _tableClient.GetEntityAsync<NotificationTemplate>(
-            partitionKey: channel,
-            rowKey: notificationId,
-            cancellationToken: cancellationToken
-        );
+        var notification = await dbContext.Notifications
+            .FirstOrDefaultAsync(
+                n => n.CompanyCode == companyCode && n.Channels.Contains(channel),
+                cancellationToken
+            );
 
-        return response.Value.Body;
+        if (notification is null)
+        {
+            return (null, null);
+        }
+
+        var emailTemplate = await dbContext.NotificationEmailTemplates
+            .FirstOrDefaultAsync(
+                et => et.NotificationId == notification.Id,
+                cancellationToken
+            );
+
+        return (emailTemplate?.Subject, emailTemplate?.HtmlBody);
     }
 
     public string MergeContent(string templateContent, Dictionary<string, string> mergeTags)

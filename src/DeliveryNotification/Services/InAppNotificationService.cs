@@ -10,14 +10,18 @@ public class InAppNotificationService(
 {
     public async Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Starting InApp notification for user: {User}", payload.User.Email);
-        var template = await _templateService.GetTemplateContentAsync(
-            payload.NotificationId,
-            "inapp",
+        var (_, body) = await _templateService.GetTemplateContentAsync(
+            payload.CompanyCode,
+           nameof(NotificationChannelType.InApp),
             cancellationToken
         );
 
-        var content = _templateService.MergeContent(template, payload.MergeTags);
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            logger.LogError("Template not found for company: {CompanyCode}", payload.CompanyCode);
+            return;
+        }
+        var content = _templateService.MergeContent(body, payload.MergeTags);
 
         logger.LogInformation(
             "[MOCK] Sending InApp notification to user: {User} - Content: {Content}",
@@ -31,7 +35,7 @@ public class InAppNotificationService(
                 PartitionKey = payload.User.Name,
                 RowKey = Guid.NewGuid().ToString(),
                 Channel = NotificationChannelType.InApp.ToString(),
-                NotificationId = payload.NotificationId,
+                CompanyCode = payload.CompanyCode,
                 Status = "Success",
                 Timestamp = DateTime.UtcNow,
             },

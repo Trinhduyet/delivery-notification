@@ -9,22 +9,45 @@ public class EmailNotificationService(
 {
     public async Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken)
     {
-        var template = await _templateService.GetTemplateContentAsync(
-            payload.NotificationId,
-            "email",
+        if (string.IsNullOrEmpty(payload.User.Email))
+        {
+            logger.LogError("Email is null or empty");
+            return;
+        }
+
+        var (subject, body) = await _templateService.GetTemplateContentAsync(
+            payload.CompanyCode,
+           nameof(NotificationChannelType.Email),
             cancellationToken
         );
 
-        var content = _templateService.MergeContent(template, payload.MergeTags);
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            logger.LogError("Template not found for company: {CompanyCode}", payload.CompanyCode);
+            return;
+        }
+
+        var email = Environment.GetEnvironmentVariable("SendGrid_Email");
+        var content = _templateService.MergeContent(body, payload.MergeTags);
         var message = new SendGridMessage();
-        message.SetFrom(new EmailAddress("trinhngo.12196@gmail.com", "Notification"));
+        message.SetFrom(new EmailAddress(email, "Notification"));
         message.AddTo(payload.User.Email, payload.User.Name);
-        message.SetSubject(template);
+        message.SetSubject(body);
         message.AddContent("text/html", content);
 
-        var result = await _retryPolicy.ExecuteAsync(async () =>
+        var response = await _retryPolicy.ExecuteAsync(async () =>
             await sendGridClient.SendEmailAsync(message, cancellationToken)
         );
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Body.ReadAsStringAsync(cancellationToken);
+            logger.LogError(
+                "Failed to send SMS to {Email}, Reason: {Reason}",
+                email,
+                responseBody
+            );
+        }
 
         await _activityLogService.LogActivityAsync(
             new ActivityLog
@@ -32,16 +55,11 @@ public class EmailNotificationService(
                 PartitionKey = payload.User.Name,
                 RowKey = Guid.NewGuid().ToString(),
                 Channel = NotificationChannelType.Email.ToString(),
-                NotificationId = payload.NotificationId,
-                Status = result.IsSuccessStatusCode ? "Success" : "Failed",
+                CompanyCode = payload.CompanyCode,
+                Status = response.IsSuccessStatusCode ? "Success" : "Failed",
                 Timestamp = DateTime.UtcNow,
             },
             cancellationToken
         );
-
-        if (!result.IsSuccessStatusCode)
-        {
-            _logger.LogError("Failed to send email: {StatusCode}", result.StatusCode);
-        }
     }
 }

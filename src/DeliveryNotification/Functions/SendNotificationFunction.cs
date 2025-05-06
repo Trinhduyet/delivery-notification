@@ -1,65 +1,64 @@
-﻿using Newtonsoft.Json;
+﻿using DeliveryNotification.Constants;
 
 namespace DeliveryNotification.Functions;
 
 public class SendNotificationFunction(
-    ServiceBusClient client,
-    ILogger<SendNotificationFunction> logger
+    ServiceBusClient serviceBusClient,
+    FunctionContext executionContext
 )
 {
-    private readonly ServiceBusSender _sender = client.CreateSender("notification-topic");
-    private readonly ILogger<SendNotificationFunction> _logger = logger;
+    private readonly ILogger _logger = executionContext.GetLogger(nameof(SendNotificationFunction));
 
     [Function(nameof(SendNotificationFunction))]
     public async Task<HttpResponseData> RunAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "send-notification")]
             HttpRequestData req,
-        CancellationToken cancellationToken
-    )
+        CancellationToken cancellationToken)
     {
         _logger.LogInformation("Received HTTP request to send notification.");
 
         var requestBody = await new StreamReader(req.Body).ReadToEndAsync(cancellationToken);
-        var notification = JsonConvert.DeserializeObject<NotificationPayload>(requestBody);
+        var notification = JsonSerializer.Deserialize<NotificationPayload>(requestBody);
 
         if (notification == null)
         {
             _logger.LogError("Notification payload is null or invalid.");
-            var badResponse = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
-            await badResponse.WriteStringAsync("Invalid payload.");
-            return badResponse;
+            return await CreateResponseAsync(req, HttpStatusCode.BadRequest, "Invalid payload.");
         }
 
-        foreach (var channel in notification.User?.Channels ?? [])
+        try
         {
-            var channelMessage = new ServiceBusMessage(JsonConvert.SerializeObject(notification))
+            await SendToChannelsAsync(notification, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send notification to one or more channels.");
+            return await CreateResponseAsync(req, HttpStatusCode.InternalServerError, "Failed to send notification.");
+        }
+
+        return await CreateResponseAsync(req, HttpStatusCode.OK, "Notification sent successfully.");
+    }
+
+    private async Task SendToChannelsAsync(NotificationPayload notification, CancellationToken cancellationToken)
+    {
+        await using var sender = serviceBusClient.CreateSender(NotificationConstants.TopicName);
+
+        foreach (var channel in notification.User?.Channels ?? Enumerable.Empty<string>())
+        {
+            var message = new ServiceBusMessage(JsonSerializer.Serialize(notification))
             {
                 Subject = channel,
             };
 
-            try
-            {
-                await _sender.SendMessageAsync(channelMessage, cancellationToken);
-                _logger.LogInformation(
-                    "Notification forwarded to topic for channel: {Channel}",
-                    channel
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send notification to channel {Channel}", channel);
-                var errorResponse = req.CreateResponse(
-                    System.Net.HttpStatusCode.InternalServerError
-                );
-                await errorResponse.WriteStringAsync("Failed to send notification.");
-                return errorResponse;
-            }
+            await sender.SendMessageAsync(message, cancellationToken);
+            _logger.LogInformation("Notification forwarded to topic for channel: {Channel}", channel);
         }
+    }
 
-        await _sender.DisposeAsync();
-        await client.DisposeAsync();
-        var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
-        await response.WriteStringAsync("Notification sent successfully.");
+    private static async Task<HttpResponseData> CreateResponseAsync(HttpRequestData req, HttpStatusCode statusCode, string message)
+    {
+        var response = req.CreateResponse(statusCode);
+        await response.WriteStringAsync(message);
         return response;
     }
 }
