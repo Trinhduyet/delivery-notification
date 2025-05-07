@@ -6,15 +6,7 @@ public class ActivityLogConfiguration : IEntityTypeConfiguration<ActivityLog>
     {
         builder.ToTable("ActivityLogs");
 
-        builder.HasKey(al => new { al.PartitionKey, al.RowKey });
-
-        builder.Property(al => al.PartitionKey)
-            .IsRequired()
-            .HasMaxLength(100);
-
-        builder.Property(al => al.RowKey)
-            .IsRequired()
-            .HasMaxLength(100);
+        builder.HasKey(c => c.Id);
 
         builder.Property(al => al.CompanyCode)
             .IsRequired()

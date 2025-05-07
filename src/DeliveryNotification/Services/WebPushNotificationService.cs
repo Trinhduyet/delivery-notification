@@ -8,7 +8,7 @@ public class WebPushNotificationService(
     : BaseNotificationChannelService(templateService, activityLogService, logger),
         INotificationChannelService
 {
-    public async Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken)
+    public async Task HandleAsync(NotificationRequest payload, CancellationToken cancellationToken)
     {
         var (_, body) = await _templateService.GetTemplateContentAsync(
             payload.CompanyCode,
@@ -34,9 +34,7 @@ public class WebPushNotificationService(
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
-                PartitionKey = payload.User.Name,
-                RowKey = Guid.NewGuid().ToString(),
-                Channel = NotificationChannelType.WebPush.ToString(),
+                Channel = nameof(NotificationChannelType.WebPush),
                 CompanyCode = payload.CompanyCode,
                 Status = "Success",
                 Timestamp = DateTime.UtcNow,

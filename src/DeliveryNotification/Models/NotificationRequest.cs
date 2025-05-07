@@ -1,6 +1,6 @@
 ﻿namespace DeliveryNotification.Models;
 
-public class NotificationPayload
+public class NotificationRequest
 {
     public string CompanyCode { get; set; } = default!;
     public UserPreference User { get; set; } = default!;

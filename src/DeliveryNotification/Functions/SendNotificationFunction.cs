@@ -18,7 +18,7 @@ public class SendNotificationFunction(
         _logger.LogInformation("Received HTTP request to send notification.");
 
         var requestBody = await new StreamReader(req.Body).ReadToEndAsync(cancellationToken);
-        var notification = JsonSerializer.Deserialize<NotificationPayload>(requestBody);
+        var notification = JsonSerializer.Deserialize<NotificationRequest>(requestBody);
 
         if (notification == null)
         {
@@ -39,7 +39,7 @@ public class SendNotificationFunction(
         return await CreateResponseAsync(req, HttpStatusCode.OK, "Notification sent successfully.");
     }
 
-    private async Task SendToChannelsAsync(NotificationPayload notification, CancellationToken cancellationToken)
+    private async Task SendToChannelsAsync(NotificationRequest notification, CancellationToken cancellationToken)
     {
         await using var sender = serviceBusClient.CreateSender(NotificationConstants.TopicName);
 

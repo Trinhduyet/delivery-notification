@@ -8,7 +8,7 @@ public class InAppNotificationService(
     : BaseNotificationChannelService(templateService, activityLogService, logger),
         INotificationChannelService
 {
-    public async Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken)
+    public async Task HandleAsync(NotificationRequest payload, CancellationToken cancellationToken)
     {
         var (_, body) = await _templateService.GetTemplateContentAsync(
             payload.CompanyCode,
@@ -32,9 +32,7 @@ public class InAppNotificationService(
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
-                PartitionKey = payload.User.Name,
-                RowKey = Guid.NewGuid().ToString(),
-                Channel = NotificationChannelType.InApp.ToString(),
+                Channel = nameof(NotificationChannelType.InApp),
                 CompanyCode = payload.CompanyCode,
                 Status = "Success",
                 Timestamp = DateTime.UtcNow,

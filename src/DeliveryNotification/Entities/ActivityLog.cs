@@ -1,9 +1,8 @@
 ﻿namespace DeliveryNotification.Entities;
 
-public class ActivityLog : ITableEntity
+public class ActivityLog
 {
-    public string PartitionKey { get; set; } = default!;
-    public string RowKey { get; set; } = Guid.NewGuid().ToString();
+    public int Id { get; set; }
     public string CompanyCode { get; set; } = default!;
     public string Channel { get; set; } = default!;
     public string Status { get; set; } = default!;

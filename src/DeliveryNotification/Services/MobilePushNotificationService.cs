@@ -11,7 +11,7 @@ public class MobilePushNotificationService(
     : BaseNotificationChannelService(templateService, activityLogService, logger),
         INotificationChannelService
 {
-    public async Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken)
+    public async Task HandleAsync(NotificationRequest payload, CancellationToken cancellationToken)
     {
         var (subject, body) = await _templateService.GetTemplateContentAsync(
             payload.CompanyCode,
@@ -56,9 +56,7 @@ public class MobilePushNotificationService(
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
-                PartitionKey = payload.User.Name,
-                RowKey = Guid.NewGuid().ToString(),
-                Channel = NotificationChannelType.MobilePush.ToString(),
+                Channel = nameof(NotificationChannelType.MobilePush),
                 CompanyCode = payload.CompanyCode,
                 Status = response.IsSuccessStatusCode ? "Success" : "Failed",
                 Timestamp = DateTime.UtcNow,

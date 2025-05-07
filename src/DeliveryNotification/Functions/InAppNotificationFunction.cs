@@ -17,7 +17,7 @@ public class InAppNotificationFunction(
         using var scope = _logger.BeginScope("InApp Processing MessageId: {MessageId}", message.MessageId);
         _logger.LogInformation("Message body: {Body}", message.Body.ToString());
 
-        var payload = JsonSerializer.Deserialize<NotificationPayload>(message.Body);
+        var payload = JsonSerializer.Deserialize<NotificationRequest>(message.Body);
 
         if (payload is null)
         {

@@ -22,7 +22,7 @@ public class MobilePushNotificationFunction(
         _logger.LogInformation("Message body: {Body}", message.Body.ToString());
 
         var payloadJson = message.Body.ToString();
-        var payload = JsonSerializer.Deserialize<NotificationPayload>(payloadJson);
+        var payload = JsonSerializer.Deserialize<NotificationRequest>(payloadJson);
 
         if (payload is null)
         {

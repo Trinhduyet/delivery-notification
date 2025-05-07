@@ -1,19 +1,14 @@
-﻿namespace DeliveryNotification.Services;
+﻿using DeliveryNotification.Infrastructure;
 
-public class ActivityLogService(ITableClientsProvider provider) : IActivityLogService
+namespace DeliveryNotification.Services;
+
+public class ActivityLogService(NotificationDbContext dbContext) : IActivityLogService
 {
-    private readonly TableClient _tableClient = provider.ActivityLogs;
+    private readonly NotificationDbContext _dbContext = dbContext;
 
     public async Task LogActivityAsync(ActivityLog log, CancellationToken cancellationToken)
     {
-        var tableEntity = new TableEntity(log.PartitionKey, Guid.NewGuid().ToString())
-        {
-            { "Channel", log.Channel },
-            { "Status", log.Status },
-            { "Timestamp", log.Timestamp },
-            { "Message", log.Message },
-        };
-
-        await _tableClient.AddEntityAsync(tableEntity, cancellationToken: cancellationToken);
+        await _dbContext.ActivityLogs.AddAsync(log, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

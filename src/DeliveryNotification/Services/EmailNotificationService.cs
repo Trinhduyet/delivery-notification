@@ -7,7 +7,7 @@ public class EmailNotificationService(
     ISendGridClient sendGridClient
 ) : BaseNotificationChannelService(templateService, logService, logger), INotificationChannelService
 {
-    public async Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken)
+    public async Task HandleAsync(NotificationRequest payload, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(payload.User.Email))
         {
@@ -52,9 +52,7 @@ public class EmailNotificationService(
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
-                PartitionKey = payload.User.Name,
-                RowKey = Guid.NewGuid().ToString(),
-                Channel = NotificationChannelType.Email.ToString(),
+                Channel = nameof(NotificationChannelType.Email),
                 CompanyCode = payload.CompanyCode,
                 Status = response.IsSuccessStatusCode ? "Success" : "Failed",
                 Timestamp = DateTime.UtcNow,

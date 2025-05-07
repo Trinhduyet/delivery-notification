@@ -2,5 +2,5 @@
 
 public interface INotificationChannelService
 {
-    Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken);
+    Task HandleAsync(NotificationRequest payload, CancellationToken cancellationToken);
 }

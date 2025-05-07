@@ -10,7 +10,7 @@ public class SmsNotificationService(
         INotificationChannelService
 {
     public async Task HandleAsync(
-        NotificationPayload payload,
+        NotificationRequest payload,
         CancellationToken cancellationToken = default
     )
     {
@@ -79,9 +79,7 @@ public class SmsNotificationService(
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
-                PartitionKey = payload.User.Name,
-                RowKey = Guid.NewGuid().ToString(),
-                Channel = NotificationChannelType.Sms.ToString(),
+                Channel = nameof(NotificationChannelType.Sms),
                 CompanyCode = payload.CompanyCode,
                 Status = response.IsSuccessStatusCode ? "Success" : "Failed",
                 Timestamp = DateTime.UtcNow,

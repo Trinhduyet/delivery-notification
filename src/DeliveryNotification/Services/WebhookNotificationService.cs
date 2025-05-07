@@ -11,7 +11,7 @@ public class WebhookNotificationService(
     : BaseNotificationChannelService(templateService, activityLogService, logger),
         INotificationChannelService
 {
-    public async Task HandleAsync(NotificationPayload payload, CancellationToken cancellationToken)
+    public async Task HandleAsync(NotificationRequest payload, CancellationToken cancellationToken)
     {
         var (subject, body) = await _templateService.GetTemplateContentAsync(
             payload.CompanyCode,
@@ -61,9 +61,7 @@ public class WebhookNotificationService(
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
-                PartitionKey = payload.User.Name,
-                RowKey = Guid.NewGuid().ToString(),
-                Channel = NotificationChannelType.Webhook.ToString(),
+                Channel = nameof(NotificationChannelType.Webhook),
                 CompanyCode = payload.CompanyCode,
                 Status = response.IsSuccessStatusCode ? "Success" : "Failed",
                 Timestamp = DateTime.UtcNow,
