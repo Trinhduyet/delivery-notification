@@ -8,12 +8,8 @@ public class ServiceConfiguration : IEntityTypeConfiguration<Service>
 
         builder.HasKey(s => s.Id);
 
-        builder.Property(s => s.Code)
-            .IsRequired()
-            .HasMaxLength(50);
+        builder.Property(s => s.Code).IsRequired().HasMaxLength(50);
 
-        builder.Property(s => s.Name)
-            .IsRequired()
-            .HasMaxLength(250);
+        builder.Property(s => s.Name).IsRequired().HasMaxLength(250);
     }
 }

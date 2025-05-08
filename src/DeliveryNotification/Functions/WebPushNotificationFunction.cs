@@ -2,10 +2,10 @@
 
 public class WebPushNotificationFunction(
     [FromKeyedServices(NotificationChannelType.WebPush)] INotificationChannelService notificationChannelService,
-    FunctionContext executionContext
+    ILoggerFactory loggerFactory
 )
 {
-    private readonly ILogger _logger = executionContext.GetLogger<WebhookNotificationFunction>();
+    private readonly ILogger<WebPushNotificationFunction> _logger = loggerFactory.CreateLogger<WebPushNotificationFunction>();
 
     [Function(nameof(WebPushNotificationFunction))]
     public async Task RunAsync(

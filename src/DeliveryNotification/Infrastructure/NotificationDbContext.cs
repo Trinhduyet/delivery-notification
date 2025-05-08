@@ -5,7 +5,6 @@ namespace DeliveryNotification.Infrastructure;
 public class NotificationDbContext(DbContextOptions<NotificationDbContext> options) : DbContext(options)
 {
     public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
-    public DbSet<NotificationTemplate> NotificationTemplates { get; set; } = null!;
     public DbSet<Company> Companies { get; set; } = null!;
     public DbSet<Service> Services { get; set; } = null!;
     public DbSet<Channel> Channels { get; set; } = null!;

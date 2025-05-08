@@ -2,10 +2,10 @@
 
 public class InAppNotificationFunction(
     [FromKeyedServices(NotificationChannelType.InApp)] INotificationChannelService notificationChannelService,
-    FunctionContext executionContext
+    ILoggerFactory loggerFactory
 )
 {
-    private readonly ILogger _logger = executionContext.GetLogger<InAppNotificationFunction>();
+    private readonly ILogger<InAppNotificationFunction> _logger = loggerFactory.CreateLogger<InAppNotificationFunction>();
 
     [Function(nameof(InAppNotificationFunction))]
     public async Task RunAsync(

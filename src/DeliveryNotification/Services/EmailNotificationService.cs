@@ -17,11 +17,11 @@ public class EmailNotificationService(
 
         var (subject, body) = await _templateService.GetTemplateContentAsync(
             payload.CompanyCode,
-           nameof(NotificationChannelType.Email),
+            NotificationChannelType.Email,
             cancellationToken
         );
 
-        if (string.IsNullOrWhiteSpace(body))
+        if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(body))
         {
             logger.LogError("Template not found for company: {CompanyCode}", payload.CompanyCode);
             return;
@@ -52,10 +52,12 @@ public class EmailNotificationService(
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
+                UserId = payload.User.Id,
                 Channel = nameof(NotificationChannelType.Email),
                 CompanyCode = payload.CompanyCode,
                 Status = response.IsSuccessStatusCode ? "Success" : "Failed",
-                Timestamp = DateTime.UtcNow,
+                Title = subject,
+                Message = content,
             },
             cancellationToken
         );

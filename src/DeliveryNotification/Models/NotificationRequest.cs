@@ -1,19 +1,19 @@
 ﻿namespace DeliveryNotification.Models;
 
-public class NotificationRequest
-{
-    public string CompanyCode { get; set; } = default!;
-    public UserPreference User { get; set; } = default!;
-    public Dictionary<string, string> MergeTags { get; set; } = [];
-}
+public record NotificationRequest(
+    string CompanyCode,
+    UserPreference User,
+    Dictionary<string, string> MergeTags
+);
 
-public class UserPreference
-{
-    public string Name { get; set; } = default!;
-    public string Email { get; set; } = default!;
-    public string? PhoneNumber { get; set; }
-    public List<string> Apps { get; set; } = [];
-    public string? WebhookUrl { get; set; }
-    public string? DeviceToken { get; set; }
-    public List<string> Channels { get; set; } = [];
-}
+public record UserPreference(
+    string Id,
+    string Name,
+    string Email,
+    string? PhoneNumber,
+    List<string> Apps,
+    string? WebhookUrl,
+    string? DeviceType,
+    string? DeviceToken,
+    List<string> Channels
+);

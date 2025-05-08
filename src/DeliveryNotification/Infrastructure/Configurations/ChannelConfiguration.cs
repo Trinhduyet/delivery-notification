@@ -8,12 +8,8 @@ public class ChannelConfiguration : IEntityTypeConfiguration<Channel>
 
         builder.HasKey(c => c.Id);
 
-        builder.Property(c => c.Code)
-            .IsRequired()
-            .HasMaxLength(50);
+        builder.Property(c => c.Code).IsRequired().HasMaxLength(50);
 
-        builder.Property(c => c.Name)
-            .IsRequired()
-            .HasMaxLength(250);
+        builder.Property(c => c.Name).IsRequired().HasMaxLength(250);
     }
 }

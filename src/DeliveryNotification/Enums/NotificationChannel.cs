@@ -7,5 +7,5 @@ public enum NotificationChannelType
     WebPush,
     MobilePush,
     InApp,
-    Webhook
+    Webhook,
 }

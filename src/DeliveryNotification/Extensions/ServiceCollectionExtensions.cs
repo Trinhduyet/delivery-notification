@@ -4,9 +4,7 @@ namespace DeliveryNotification.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddInfrastructureServices(
-        this IServiceCollection services
-    )
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
         var tableStorageConnectionString = Environment.GetEnvironmentVariable("ConnectionString");
 
@@ -28,6 +26,11 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<NotificationDbContext>(options =>
             options.UseSqlServer(connectionString)
         );
+
+        var azureSignalRConnectionString = Environment.GetEnvironmentVariable(
+            "AzureSignalRConnectionString"
+        );
+        services.AddSignalR().AddAzureSignalR(azureSignalRConnectionString);
 
         return services;
     }

@@ -3,10 +3,11 @@
 public class ActivityLog
 {
     public int Id { get; set; }
+    public string UserId { get; set; } = default!;
     public string CompanyCode { get; set; } = default!;
     public string Channel { get; set; } = default!;
     public string Status { get; set; } = default!;
+    public string Title { get; set; } = default!;
     public string Message { get; set; } = default!;
-    public DateTimeOffset? Timestamp { get; set; } = DateTimeOffset.UtcNow;
-    public ETag ETag { get; set; } = ETag.All;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

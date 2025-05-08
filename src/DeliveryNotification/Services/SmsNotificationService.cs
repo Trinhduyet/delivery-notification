@@ -9,12 +9,8 @@ public class SmsNotificationService(
     : BaseNotificationChannelService(templateService, activityLogService, logger),
         INotificationChannelService
 {
-    public async Task HandleAsync(
-        NotificationRequest payload,
-        CancellationToken cancellationToken = default
-    )
+    public async Task HandleAsync(NotificationRequest payload, CancellationToken cancellationToken)
     {
-
         var toPhoneNumber = payload.User.PhoneNumber;
         if (string.IsNullOrWhiteSpace(toPhoneNumber))
         {
@@ -22,32 +18,29 @@ public class SmsNotificationService(
             return;
         }
 
-        var (_, body) = await _templateService.GetTemplateContentAsync(
+        var (title, message) = await _templateService.GetTemplateContentAsync(
             payload.CompanyCode,
-           nameof(NotificationChannelType.MobilePush),
+            NotificationChannelType.Sms,
             cancellationToken
         );
 
-        if (string.IsNullOrWhiteSpace(body))
+        if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(message))
         {
             logger.LogError("Template not found for company: {CompanyCode}", payload.CompanyCode);
             return;
         }
 
-        var content = _templateService.MergeContent(body, payload.MergeTags);
+        var content = _templateService.MergeContent(message, payload.MergeTags);
 
         var accountSid = Environment.GetEnvironmentVariable("Twilio_AccountSid");
         var authToken = Environment.GetEnvironmentVariable("Twilio_AuthToken");
-        var fromPhoneNumber = Environment.GetEnvironmentVariable("Twilio_FromPhoneNumber") ?? "Euroland";
+        var fromPhoneNumber =
+            Environment.GetEnvironmentVariable("Twilio_FromPhoneNumber") ?? "Euroland";
         var sendUrl = Environment.GetEnvironmentVariable("Twilio_SendUrl");
-
 
         var request = new HttpRequestMessage(
             HttpMethod.Post,
-            sendUrl?.Replace(
-                "{AccountSid}",
-                accountSid
-            )
+            sendUrl?.Replace("{AccountSid}", accountSid)
         );
 
         var bodySms = new FormUrlEncodedContent(
@@ -79,10 +72,12 @@ public class SmsNotificationService(
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
+                UserId = payload.User.Id,
                 Channel = nameof(NotificationChannelType.Sms),
                 CompanyCode = payload.CompanyCode,
                 Status = response.IsSuccessStatusCode ? "Success" : "Failed",
-                Timestamp = DateTime.UtcNow,
+                Title = title,
+                Message = content,
             },
             cancellationToken
         );

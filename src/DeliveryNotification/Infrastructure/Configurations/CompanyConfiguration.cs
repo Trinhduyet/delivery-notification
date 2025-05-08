@@ -1,4 +1,5 @@
 namespace DeliveryNotification.Infrastructure.Configurations;
+
 public class CompanyConfiguration : IEntityTypeConfiguration<Company>
 {
     public void Configure(EntityTypeBuilder<Company> builder)
@@ -7,12 +8,8 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
 
         builder.HasKey(c => c.Id);
 
-        builder.Property(c => c.CompanyCode)
-            .IsRequired()
-            .HasMaxLength(10);
+        builder.Property(c => c.CompanyCode).IsRequired().HasMaxLength(10);
 
-        builder.Property(c => c.CompanyName)
-            .IsRequired()
-            .HasMaxLength(50);
+        builder.Property(c => c.CompanyName).IsRequired().HasMaxLength(50);
     }
 }

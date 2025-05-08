@@ -2,11 +2,11 @@
 
 public interface INotificationTemplateService
 {
-    Task<(string? Subject, string? Body)> GetTemplateContentAsync(
+    Task<(string? Title, string? Message)> GetTemplateContentAsync(
         string companyCode,
-        string channel,
+        NotificationChannelType channel,
         CancellationToken cancellationToken
-        );
+    );
 
     string MergeContent(string templateContent, Dictionary<string, string> mergeTags);
 }

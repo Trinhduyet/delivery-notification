@@ -8,7 +8,6 @@ public class ChannelSettingsConfiguration : IEntityTypeConfiguration<ChannelSett
 
         builder.HasKey(cs => cs.ChannelId);
 
-        builder.Property(cs => cs.Settings)
-            .IsRequired();
+        builder.Property(cs => cs.Settings).IsRequired();
     }
 }

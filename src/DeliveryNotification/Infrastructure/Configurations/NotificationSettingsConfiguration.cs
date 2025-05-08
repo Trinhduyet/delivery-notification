@@ -8,13 +8,10 @@ public class NotificationSettingsConfiguration : IEntityTypeConfiguration<Notifi
 
         builder.HasKey(ns => ns.Id);
 
-        builder.Property(ns => ns.Deduplication)
-            .IsRequired();
+        builder.Property(ns => ns.Deduplication).IsRequired();
 
-        builder.Property(ns => ns.Throttling)
-            .IsRequired();
+        builder.Property(ns => ns.Throttling).IsRequired();
 
-        builder.Property(ns => ns.Retention)
-            .IsRequired();
+        builder.Property(ns => ns.Retention).IsRequired();
     }
 }

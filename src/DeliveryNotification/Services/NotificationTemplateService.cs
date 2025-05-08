@@ -2,32 +2,43 @@
 
 namespace DeliveryNotification.Services;
 
-public class NotificationTemplateService(NotificationDbContext dbContext) : INotificationTemplateService
+public class NotificationTemplateService(NotificationDbContext dbContext)
+    : INotificationTemplateService
 {
-    public async Task<(string? Subject, string? Body)> GetTemplateContentAsync(
+    public async Task<(string? Title, string? Message)> GetTemplateContentAsync(
         string companyCode,
-        string channel,
+        NotificationChannelType channel,
         CancellationToken cancellationToken
     )
     {
-        var notification = await dbContext.Notifications
-            .FirstOrDefaultAsync(
-                n => n.CompanyCode == companyCode && n.Channels.Contains(channel),
-                cancellationToken
-            );
+        var notification = await dbContext.Notifications.FirstOrDefaultAsync(
+            n => n.CompanyCode == companyCode && n.Channels.Contains(nameof(channel)),
+            cancellationToken
+        );
 
         if (notification is null)
         {
             return (null, null);
         }
 
-        var emailTemplate = await dbContext.NotificationEmailTemplates
-            .FirstOrDefaultAsync(
+        if (channel == NotificationChannelType.Email)
+        {
+            var emailTemplate = await dbContext.NotificationEmailTemplates.FirstOrDefaultAsync(
                 et => et.NotificationId == notification.Id,
                 cancellationToken
             );
 
-        return (emailTemplate?.Subject, emailTemplate?.HtmlBody);
+            return (emailTemplate?.Subject, emailTemplate?.HtmlBody);
+        }
+        else
+        {
+            var pushTemplate = await dbContext.NotificationPushTemplates.FirstOrDefaultAsync(
+                pt => pt.NotificationId == notification.Id,
+                cancellationToken
+            );
+
+            return (pushTemplate?.Title, pushTemplate?.Message);
+        }
     }
 
     public string MergeContent(string templateContent, Dictionary<string, string> mergeTags)

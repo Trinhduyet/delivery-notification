@@ -1,4 +1,3 @@
-
 namespace DeliveryNotification.Entities;
 
 public class Notification

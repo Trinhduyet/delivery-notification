@@ -1,13 +1,12 @@
-﻿using DeliveryNotification.Constants;
-
-namespace DeliveryNotification.Functions;
+﻿namespace DeliveryNotification.Functions;
 
 public class SendNotificationFunction(
     ServiceBusClient serviceBusClient,
-    FunctionContext executionContext
+    ILoggerFactory loggerFactory
 )
 {
-    private readonly ILogger _logger = executionContext.GetLogger(nameof(SendNotificationFunction));
+    private readonly ServiceBusClient _serviceBusClient = serviceBusClient;
+    private readonly ILogger _logger = loggerFactory.CreateLogger<SendNotificationFunction>();
 
     [Function(nameof(SendNotificationFunction))]
     public async Task<HttpResponseData> RunAsync(
@@ -15,11 +14,10 @@ public class SendNotificationFunction(
             HttpRequestData req,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Received HTTP request to send notification.");
+        _logger.LogInformation("Received HTTP request to send notification");
 
         var requestBody = await new StreamReader(req.Body).ReadToEndAsync(cancellationToken);
         var notification = JsonSerializer.Deserialize<NotificationRequest>(requestBody);
-
         if (notification == null)
         {
             _logger.LogError("Notification payload is null or invalid.");
@@ -41,7 +39,7 @@ public class SendNotificationFunction(
 
     private async Task SendToChannelsAsync(NotificationRequest notification, CancellationToken cancellationToken)
     {
-        await using var sender = serviceBusClient.CreateSender(NotificationConstants.TopicName);
+        await using var sender = _serviceBusClient.CreateSender(NotificationConstants.TopicName);
 
         foreach (var channel in notification.User?.Channels ?? Enumerable.Empty<string>())
         {

@@ -2,10 +2,10 @@
 
 public class EmailNotificationFunction(
     [FromKeyedServices(NotificationChannelType.Email)] INotificationChannelService notificationChannelService,
-    FunctionContext executionContext
+    ILoggerFactory loggerFactory
 )
 {
-    private readonly ILogger _logger = executionContext.GetLogger<EmailNotificationFunction>();
+    private readonly ILogger<EmailNotificationFunction> _logger = loggerFactory.CreateLogger<EmailNotificationFunction>();
 
     [Function(nameof(EmailNotificationFunction))]
     public async Task RunAsync(

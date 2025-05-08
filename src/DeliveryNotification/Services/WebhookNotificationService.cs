@@ -1,6 +1,4 @@
-﻿using System.Net.Http.Json;
-
-namespace DeliveryNotification.Services;
+﻿namespace DeliveryNotification.Services;
 
 public class WebhookNotificationService(
     INotificationTemplateService templateService,
@@ -13,19 +11,19 @@ public class WebhookNotificationService(
 {
     public async Task HandleAsync(NotificationRequest payload, CancellationToken cancellationToken)
     {
-        var (subject, body) = await _templateService.GetTemplateContentAsync(
+        var (title, message) = await _templateService.GetTemplateContentAsync(
             payload.CompanyCode,
-           nameof(NotificationChannelType.Webhook),
+            NotificationChannelType.MobilePush,
             cancellationToken
         );
 
-        if (string.IsNullOrWhiteSpace(body))
+        if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(message))
         {
             logger.LogError("Template not found for company: {CompanyCode}", payload.CompanyCode);
             return;
         }
 
-        var content = _templateService.MergeContent(body, payload.MergeTags);
+        var content = _templateService.MergeContent(message, payload.MergeTags);
 
         if (string.IsNullOrEmpty(payload.User.WebhookUrl))
         {
@@ -36,7 +34,7 @@ public class WebhookNotificationService(
         var webhookPayload = new
         {
             user = payload.User.Name,
-            subject,
+            message,
             content,
             timestamp = DateTime.UtcNow,
         };
@@ -61,10 +59,12 @@ public class WebhookNotificationService(
         await _activityLogService.LogActivityAsync(
             new ActivityLog
             {
+                UserId = payload.User.Id,
                 Channel = nameof(NotificationChannelType.Webhook),
                 CompanyCode = payload.CompanyCode,
                 Status = response.IsSuccessStatusCode ? "Success" : "Failed",
-                Timestamp = DateTime.UtcNow,
+                Title = title,
+                Message = content
             },
             cancellationToken
         );

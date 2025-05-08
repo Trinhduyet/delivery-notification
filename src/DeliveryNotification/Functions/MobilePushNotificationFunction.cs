@@ -2,10 +2,10 @@
 
 public class MobilePushNotificationFunction(
     [FromKeyedServices(NotificationChannelType.MobilePush)] INotificationChannelService notificationChannelService,
-    FunctionContext executionContext
+    ILoggerFactory loggerFactory
 )
 {
-    private readonly ILogger _logger = executionContext.GetLogger<MobilePushNotificationFunction>();
+    private readonly ILogger<WebPushNotificationFunction> _logger = loggerFactory.CreateLogger<WebPushNotificationFunction>();
 
     [Function(nameof(MobilePushNotificationFunction))]
     public async Task Run(
